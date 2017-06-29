@@ -1,0 +1,218 @@
+---
+title: "PML_Assignment_Syntax"
+author: "Anant"
+date: "21 June 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+This document describes the steps and the syntax for building model and predicting values 
+for the current machine Learning problem.
+
+The document is divided into following steps:
+
+1. Set Working Directory 
+2. Reading training and test data
+3. Loading required packages
+4. Checking missing values across variables in data
+5. Removing variables with large missing values
+6. Checking structure of training data
+7. Removing useless variables
+8. Dividing training data into training and validation dataset
+9. Checking data for variables with no or 0 variance
+10. Modeling data on training dataset
+11. Verifying model on validation set
+12. Predicting test data
+13. Adding predicted value to dataset
+
+
+## Modeling and Prediction ##
+                      
+## Set Working Directory ##
+
+```
+setwd("C:/Users/anant.saxena1/Desktop/PMLProject")
+
+```
+
+## Reading training and test data ##
+```
+pml_train <- read.csv("C:/Users/anant.saxena1/Desktop/PMLProject/pml-training.csv")
+
+pml_test <- read.csv("C:/Users/anant.saxena1/Desktop/PMLProject/pml-testing.csv")
+
+View(pml_train)
+View(pml_test)
+```
+
+## Loading required packages ##
+```
+library(caret)
+library(ggplot2)
+```
+
+## Checking missing values across variables in data ##
+
+```
+missing_variables <- colSums(is.na(pml_train))
+missing_variables_table <- as.data.frame(missing_variables)
+View(missing_variables_table)
+```
+
+## There are number of variables that contain approximately ##
+## 98% of missing data. This is wise to remove ##
+## these variables for modeling ##
+
+## Removing variables with large missing values ##
+
+```
+pml_train2 <- pml_train[missing_variables < 19000]
+View(pml_train2)
+ncol(pml_train2)
+```
+
+
+## Checking structure of training data ##
+
+```
+str(pml_train2)
+```
+
+## Removing other useless variables with max #DIV/0! etc. in dataset,##
+## Also removing variables with only between 370-420 values as it is only around 2-3% data that will harm model if put in ##
+
+```
+useless_variables <- c ("X","user_name", "kurtosis_roll_belt", "kurtosis_picth_belt" ,"kurtosis_yaw_belt" ,"skewness_roll_belt", "skewness_roll_belt.1", "skewness_yaw_belt", "min_yaw_belt", "amplitude_yaw_belt", "kurtosis_roll_arm",	"kurtosis_picth_arm"	,"kurtosis_yaw_arm",	"skewness_roll_arm", "skewness_pitch_arm", "skewness_yaw_arm", "kurtosis_roll_dumbbell",	"kurtosis_picth_dumbbell",	"kurtosis_yaw_dumbbell", "skewness_roll_dumbbell",	"skewness_pitch_dumbbell"	,"skewness_yaw_dumbbell",
+"amplitude_yaw_dumbbell", "kurtosis_roll_forearm",	"kurtosis_picth_forearm",	
+"kurtosis_yaw_forearm"	,"skewness_roll_forearm"	,"skewness_pitch_forearm"	
+,"skewness_yaw_forearm" ,"max_yaw_forearm", "min_yaw_forearm", "amplitude_yaw_forearm", "raw_timestamp_part_1", "raw_timestamp_part_2", "max_yaw_belt", "max_yaw_dumbbell","min_yaw_dumbbell","cvtd_timestamp", "skewness_yaw_belt", "kurtosis_yaw_belt", "amplitude_yaw_belt", "kurtosis_yaw_dumbbell" ,"amplitude_yaw_dumbbell", "kurtosis_yaw_forearm", "skewness_yaw_forearm","amplitude_yaw_forearm") 
+
+pml_train3 <- pml_train2[ , -which(names(pml_train2) %in% useless_variables)]
+
+
+ncol(pml_train3)
+View(pml_train3)
+
+```
+
+## Checking training data again ##
+
+```
+str(pml_train3)
+```
+
+
+## Dividing training data into training and validation dataset ##
+
+```
+set.seed(12345678)
+
+pml_train_index <- createDataPartition(pml_train3$classe, p=0.7, list = FALSE)
+
+pml_train_final <- pml_train3[pml_train_index,]
+pml_validation <- pml_train3[-pml_train_index, ]
+
+nrow(pml_train_final)
+nrow(pml_validation)
+```
+
+## Checking data for variables with no or 0 variance ##
+
+```
+nearZeroVar(pml_train_final[, sapply(pml_train_final, is.numeric)])
+```
+
+## Modeling data on training dataset ##
+
+```
+pml_model <- train(classe ~ ., methood = "rf", data = pml_train_final, importance = TRUE)
+
+pml_model
+
+```
+## Result ##
+
+Random Forest 
+
+13737 samples
+   54 predictor
+    5 classes: 'A', 'B', 'C', 'D', 'E' 
+
+No pre-processing
+Resampling: Bootstrapped (25 reps) 
+Summary of sample sizes: 13737, 13737, 13737, 13737, 13737, 13737, ... 
+Resampling results across tuning parameters:
+
+  mtry  Accuracy   Kappa    
+   2    0.9915850  0.9893504
+  28    0.9954784  0.9942777
+  54    0.9919544  0.9898163
+
+Accuracy was used to select the optimal model using  the largest value.
+The final value used for the model was mtry = 28.
+
+
+## Verifying model on validation set ##
+
+```
+predictionResults <- confusionMatrix(pml_validation$classe, predict(pml_model, pml_validation))
+
+predictionResults
+```
+
+## Prediction Results ##
+
+Confusion Matrix and Statistics
+
+          Reference
+Prediction    A    B    C    D    E
+         A 1672    1    0    0    1
+         B    2 1135    2    0    0
+         C    0    1 1025    0    0
+         D    0    0    1  963    0
+         E    0    0    0    3 1079
+
+Overall Statistics
+                                          
+               Accuracy : 0.9981          
+                 95% CI : (0.9967, 0.9991)
+    No Information Rate : 0.2845          
+    P-Value [Acc > NIR] : < 2.2e-16       
+                                          
+                  Kappa : 0.9976          
+ Mcnemar's Test P-Value : NA              
+
+Statistics by Class:
+
+                     Class: A Class: B Class: C Class: D Class: E
+Sensitivity            0.9988   0.9982   0.9971   0.9969   0.9991
+Specificity            0.9995   0.9992   0.9998   0.9998   0.9994
+Pos Pred Value         0.9988   0.9965   0.9990   0.9990   0.9972
+Neg Pred Value         0.9995   0.9996   0.9994   0.9994   0.9998
+Prevalence             0.2845   0.1932   0.1747   0.1641   0.1835
+Detection Rate         0.2841   0.1929   0.1742   0.1636   0.1833
+Detection Prevalence   0.2845   0.1935   0.1743   0.1638   0.1839
+Balanced Accuracy      0.9992   0.9987   0.9984   0.9983   0.9992
+
+## Predicting test data ##
+
+```
+predict_test <- predict(pml_model, newdata = pml_test)
+```
+
+## Adding predicted value to the dataset ##
+
+```
+pml_predicted_data <- cbind(pml_test, predict_test)
+View(pml_predicted_data)
+
+write.csv(pml_predicted_data, file = "C:/Users/anant.saxena1/Desktop/PML_predicted_data.csv")
+
+
+```
+
